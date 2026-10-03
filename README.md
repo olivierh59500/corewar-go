@@ -1,215 +1,147 @@
-# Core War Game
+# Corewar Go
 
-A Go implementation of the classic Core War game with graphical visualization using Ebiten.
+A programming game and visual Core War simulator written in Go with Ebitengine. Two small Redcode programs, called **warriors**, compete in a shared circular memory: they copy instructions, place `DAT` bombs and create processes while trying to eliminate their opponent.
 
-## Overview
+Watch the memory change in the graphical viewer, run a battle with a console report, or compare warriors in a round-robin tournament. The project includes a simplified Redcode assembler, its own virtual machine and 17 example `.red` files.
 
-Core War is a programming game where programs (called "warriors") battle in a virtual computer's memory. Each warrior tries to eliminate the others by causing them to execute invalid instructions. This implementation features:
+## Watch a battle
 
-- Real-time graphical visualization of the memory core
-- Support for Redcode assembly language
-- Multiple example warriors
-- Pause/resume functionality
-- Speed control
-- Visual representation of read/write operations
-- Battle statistics and tournament mode
-- Three game modes: Visual, Battle, and Tournament
+[![Animated preview of Imp and Mice spreading through the memory core](docs/media/preview.gif)](https://github.com/olivierh59500/corewar-go/raw/refs/heads/main/docs/media/preview.mp4)
 
-## Features
+**[Watch the 24-second presentation video (MP4, silent)](https://github.com/olivierh59500/corewar-go/raw/refs/heads/main/docs/media/preview.mp4)** · [Download the MP4](docs/media/preview.mp4) · [View the silent GIF](docs/media/preview.gif)
 
-- **Visual Memory Core**: Watch programs battle in real-time with color-coded visualization
-- **Redcode Assembler**: Built-in assembler for the Redcode language
-- **Multiple Warriors**: Includes several classic warriors (Imp, Dwarf, Vampire, Scanner, etc.)
-- **Interactive Controls**: 
-  - Space: Pause/Resume
-  - Up/Down: Adjust execution speed
-  - R: Restart battle
-  - ESC: Exit
-- **Game Modes**:
-  - **Visual Mode**: Interactive graphical battle viewer
-  - **Battle Mode**: Single battle with detailed statistics
-  - **Tournament Mode**: Round-robin tournament between multiple warriors
+The capture follows the supplied **Imp** and **Mice** warriors, pauses the simulation, resumes it and increases the speed. The nine-second GIF combines three excerpts. Corewar Go has no music or sound effects; both previews are silent.
 
-## Requirements
+| Early execution | Paused battle | Later memory state |
+| --- | --- | --- |
+| [![Imp and Mice begin copying instructions across the memory grid](docs/media/screenshot-1.png)](docs/media/screenshot-1.png) | [![Paused simulation with Mice at its 64-process limit](docs/media/screenshot-2.png)](docs/media/screenshot-2.png) | [![Red and blue instruction trails after more than 43000 cycles](docs/media/screenshot-3.png)](docs/media/screenshot-3.png) |
 
-- Go 1.19 or higher
-- Ebiten v2
+Click a screenshot for its native 1024 × 768 image. These captures use the project's renderer and VM, with the same warriors as the command below.
 
-## Installation
+## Run and build
 
-```bash
-# Clone the repository
-git clone https://github.com/olivierh59500/corewar-go
+Requires **Go 1.24.4 or later**, a desktop display for the visual mode, and the platform dependencies required by **Ebitengine 2.8.8**, the version pinned in [go.mod](go.mod). Linux builds need its graphics development libraries as well as a working graphical session. See the [pinned Ebitengine source and platform guidance](https://github.com/hajimehoshi/ebiten/tree/v2.8.8).
+
+```sh
+git clone https://github.com/olivierh59500/corewar-go.git
 cd corewar-go
-
-# Install dependencies
-go mod init corewar
-go get github.com/hajimehoshi/ebiten/v2
-
-# Run the game
-go run .
+go mod download
+go run . -w1 warriors/imp.red -w2 warriors/mice.red
 ```
 
-## Usage
+This opens the visual viewer with the pair shown in the video. `go run .` uses the built-in Imp and Dwarf definitions. Select a different pair by supplying **both** `-w1` and `-w2`.
 
-### Visual Mode (Default)
-Watch battles with real-time graphics:
-```bash
-# Run with default warriors
-go run .
+Build a desktop executable:
 
-# Run with custom warriors
-go run . -w1 warriors/imp.red -w2 warriors/dwarf.red
+```sh
+go build -o corewar-go .
+./corewar-go -w1 warriors/imp.red -w2 warriors/classicdwarf.red
 ```
 
-### Battle Mode
-Run a single battle with statistics:
-```bash
-go run . -mode battle -w1 warriors/vampire.red -w2 warriors/scanner.red
+Run these commands from the repository directory so the example files are available. Warrior files are read from disk; paths are relative to the current working directory. The executable also contains the built-in warrior definitions.
+
+## Visual mode and controls
+
+| Key | Action |
+| --- | --- |
+| Space | Pause or resume |
+| Up / Down | Increase or decrease speed; hold to adjust continuously |
+| R | Restart the current pair |
+| Esc | Exit |
+
+The viewer starts automatically. Speed ranges from **1 to 100 VM cycles per frame**, initially 10; one VM cycle executes one process instruction. Restart resets the battle and speed. When a battle finishes, its result remains on screen and a detailed report is printed to the console.
+
+The grid represents **8,000 memory cells**. Gray cells are unclaimed; red and blue identify the two warriors. Execution brightens a cell, writes add a yellow tint, and reads add a green tint. Owned `DAT` instructions appear darker. The bottom panel shows each warrior's alive/dead state, active processes and owned `DAT` count, alongside the simulation status, speed and cycle counter.
+
+Warriors are selected through the command line. The viewer provides keyboard control of the running simulation.
+
+## Console battle and tournament modes
+
+Run one battle to completion and print its report:
+
+```sh
+go run . -mode battle -w1 warriors/imp.red -w2 warriors/mice.red
 ```
 
-### Tournament Mode
-Run a round-robin tournament:
-```bash
-go run . -mode tournament -rounds 20
+The report includes the winner or draw, elapsed time, total cycles, maximum active processes, instruction counts, starting positions and each warrior's share of executed instructions.
+
+Run a tournament:
+
+```sh
+go run . -mode tournament -rounds 10
 ```
 
-## Project Structure
+The current loader reads `warriors/*.red` in filename order and takes the **first four files that assemble successfully**. Invalid files are skipped. If fewer than two load, the tournament uses four built-in warriors. Each selected pair fights the requested number of rounds, swapping starting positions on alternate rounds. The final table ranks warriors by wins and reports the total battles and draws. With four warriors and ten rounds per pair, this gives 60 battles.
 
-```
-corewar-go/
-├── main.go           # Entry point and game loop
-├── core.go           # Memory core implementation
-├── vm.go             # Virtual machine (MARS)
-├── assembler.go      # Redcode assembler
-├── warrior.go        # Warrior structure and loading
-├── graphics.go       # Ebiten graphics rendering
-├── battle.go         # Battle manager and statistics
-├── loader.go         # File loading utilities
-├── warriors/         # Example warrior programs
-│   ├── imp.red
-│   ├── dwarf.red
-│   ├── mice.red
-│   ├── scanner.red
-│   ├── vampire.red
-│   └── gate.red
-├── go.mod
-├── go.sum
-├── run.sh           # Helper script
-└── README.md
-```
+`-rounds` applies to tournament mode; `-w1` and `-w2` select the pair in visual or battle mode. Console modes still import Ebitengine and need its platform dependencies.
 
-## How to Play
+## Simulation rules
 
-1. Run the game with `go run .`
-2. The game will automatically load two warriors and start the battle
-3. Watch as the warriors execute instructions and try to eliminate each other
-4. Use keyboard controls to interact with the simulation
+- Memory wraps around an **8,000-cell** core, initially filled with `DAT #0, #0`.
+- Two warriors start at addresses **0 and 4,000**. Starting positions are fixed; tournaments alternate which warrior receives each position.
+- Processes share a round-robin execution queue. `SPL` can create up to **64 active processes per warrior**.
+- Executing `DAT` kills the current process. This VM also kills a process when it reaches a cell owned by the opposing warrior.
+- A warrior survives while it has at least one active process. One remaining warrior wins; no surviving warriors or reaching **80,000 cycles** produces a draw.
 
-## Understanding the Display
+## Write a warrior
 
-- **Memory Grid**: Each cell represents a memory location (8000 total)
-- **Colors**:
-  - Gray: Empty memory
-  - Red/Blue/Green/Yellow: Instructions belonging to different warriors
-  - Bright colors: Currently executing instruction
-  - Yellow tint: Recent write operation
-  - Green tint: Recent read operation
-
-## Writing Warriors
-
-Warriors are written in Redcode, a simplified assembly language. Here's a simple example:
+Use a `.red` text file with instructions, integer operands, labels ending in `:`, and `;` comments. `;name` and `;author` provide the name and author used in reports. For example:
 
 ```redcode
 ;redcode
-;name MyWarrior
+;name My Imp
 ;author Your Name
-;strategy Description of strategy
+;strategy Copy one instruction through memory
 
-start:  MOV bomb, @ptr    ; Copy bomb to target
-        ADD #4, ptr       ; Increment pointer
-        JMP start         ; Loop
-bomb:   DAT #0, #0        ; The bomb
-ptr:    DAT #0, #100      ; Starting target
+imp:    MOV 0, 1
 
-end start
+END imp
 ```
 
-Save your warrior as a `.red` file in the `warriors/` directory.
+Save it as `warriors/my-imp.red`, then run:
 
-## Redcode Instructions
-
-- **MOV**: Copy data from source to destination
-- **ADD**: Add source to destination
-- **SUB**: Subtract source from destination
-- **JMP**: Jump to address
-- **JMZ**: Jump if zero
-- **JMN**: Jump if not zero
-- **DJN**: Decrement and jump if not zero
-- **CMP/SEQ**: Compare and skip next instruction if equal
-- **SPL**: Split (create new process)
-- **DAT**: Data (terminates execution)
-- **NOP**: No operation
-
-## Addressing Modes
-
-- `#`: Immediate (e.g., `#5`) - Use the number itself
-- `: Direct (e.g., `$5`) - Use the address
-- `@`: Indirect (e.g., `@5`) - Use the address pointed to
-- `<`: Pre-decrement indirect - Decrement pointer before use
-- `>`: Post-increment indirect - Increment pointer after use
-
-## Example Warriors
-
-### Imp
-The simplest warrior - copies itself through memory:
-```redcode
-MOV 0, 1
+```sh
+go run . -w1 warriors/my-imp.red -w2 warriors/mice.red
 ```
 
-### Dwarf
-Bombs memory with DAT instructions:
-```redcode
-ADD #4, 3
-MOV #0, @-1
-JMP -2
-DAT #0, #0
+Addresses and labels are relative to the instruction using them. Supported addressing prefixes are immediate `#`, direct `$` (also the default), indirect `@`, pre-decrement `<` and post-increment `>`. Indirect addressing uses the pointer instruction's B field.
+
+| Instruction | Behavior in this VM |
+| --- | --- |
+| `DAT` | Terminate the current process |
+| `MOV` | Copy an instruction; an immediate A operand writes a `DAT` bomb |
+| `ADD` / `SUB` | Add or subtract fields; an immediate A operand changes the destination's B field |
+| `JMP` | Jump to the A target |
+| `JMZ` / `JMN` | Test the A value or its B field, then jump to the B target when zero / nonzero |
+| `DJN` | Decrement the A location's B field, then jump to the B target when it reaches zero |
+| `CMP` / `SEQ` | Compare B fields or immediate values; skip the next instruction when equal |
+| `SPL` | Create a process at the A target |
+
+This is an experimental Redcode subset with custom execution rules. ICWS '94 warriors may need adaptation: instruction modifiers, arithmetic expressions and assembly macros are unsupported; `END` does not choose an entry point, and the initial process starts at the first instruction. `NOP` is recognized but discarded during assembly. Pointer updates for `<` and `>` are stored only when resolving write operands. The conditional instructions and memory-ownership rule above also affect compatibility. Start with the supplied examples when writing for this VM.
+
+Useful examples include [Imp](warriors/imp.red), [Mice](warriors/mice.red), [ClassicDwarf](warriors/classicdwarf.red), [Scanner](warriors/scanner.red) and [Vampire](warriors/vampire.red). Each file retains its author and strategy comments.
+
+## Development
+
+```sh
+go build .
+go vet ./...
+go test ./...
 ```
 
-### Vampire
-Converts enemy processes by making them jump to a trap:
-```redcode
-pit: JMP pit
-MOV pit, @fang
-ADD #10, fang
-JMP -2
-fang: DAT #0, #10
-```
+The repository currently has no `_test.go` files, so `go test` provides a package compilation check. `debugbattle.go` and `testbattle.go` contain diagnostic helper functions; they are part of the application rather than automated tests.
 
-## Battle Statistics
+- [main.go](main.go): modes, viewer state and keyboard input.
+- [core.go](core.go) and [vm.go](vm.go): circular memory, instruction execution and process scheduling.
+- [assembler.go](assembler.go) and [loader.go](loader.go): Redcode parsing, metadata and file loading.
+- [battle.go](battle.go): results, statistics and round-robin tournaments.
+- [graphics.go](graphics.go): memory grid, activity colors and status panel.
+- [warrior.go](warrior.go) and [warriors/](warriors): built-in definitions and editable examples.
 
-In battle and tournament modes, the game tracks:
-- Total cycles executed
-- Maximum processes per warrior
-- Instructions executed per warrior
-- Efficiency ratings
-- Win/loss records (tournament mode)
+Contributions can add warriors, improve the viewer, expand assembler compatibility or validate VM behavior.
 
-## Contributing
+## License and credits
 
-Feel free to contribute by:
-- Adding new warriors
-- Improving the graphics
-- Optimizing the VM
-- Adding new features
-- Implementing more Redcode instructions
+Copyright © 2025 Olivier Houte. Distributed under the [MIT License](LICENSE).
 
-## License
-
-MIT License - see LICENSE file for details
-
-## Acknowledgments
-
-- Original Core War concept by A.K. Dewdney
-- Inspired by the ICWS (International Core War Society) standards
-- Redcode specification based on ICWS '94 standard
+Inspired by Core War and the ICWS Redcode tradition. The bundled warrior metadata credits A.K. Dewdney, Chip Wendell and the Core War community; those credits remain in the example files.
